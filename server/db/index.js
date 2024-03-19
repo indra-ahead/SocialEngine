@@ -1,12 +1,13 @@
-const mysql = require('mysql2');
+import mysql from 'mysql2';
 
 // Create a connection pool
 const pool = mysql.createPool({
-
     host: 'localhost',
     user: 'root',
-    password: 'root',
+    password: '',
     database: 'socialengine'
 });
 
-module.exports = pool.promise();
+const db = pool.promise();
+
+export default db;

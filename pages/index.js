@@ -20,8 +20,6 @@ export default function Home(props) {
 
 export async function getServerSideProps(context) {
   const response = await axios.get("http://localhost:3000/api/signup");
-
-  
   return {
     props: { ...response.data },
   };
