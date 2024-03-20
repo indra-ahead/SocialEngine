@@ -37,7 +37,7 @@ const Signup = ({menus}) => {
 
     return (
         <form onSubmit={handleSubmit} className={styles['form-container']}>
-            { menus.map((feild) => {
+            {/* { menus.map((feild) => {
                 return (
                     feild.type !== "select" ?
                         <input className={styles['input-field']} key={feild.name} onChange={(e) => handleChange(e, feild.type)} type={feild.type} name={feild.name} placeholder={feild.placeholder} required={feild.required} />
@@ -50,7 +50,7 @@ const Signup = ({menus}) => {
                             })}
                         </select>
                 )
-            })}
+            })} */}
             <button type="submit">Sign Up</button>
         </form>
     );

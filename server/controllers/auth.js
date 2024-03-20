@@ -1,175 +1,73 @@
 import * as validation from "../validation/auth.js"
-import db from "../db/index.js"
-export const getSignup = async (req, res, next) => {
- 
-    try {
+import { IMAGE_TYPES, LANGUAGES, REGEX, STATUS_CODE } from "../constants/constants.js";
+import { comparePasswords, hashPassword} from "../utils/converters.js";
+import {  createUserQuery,  userFindQuery } from "../schema/userQuery.js";
+import { formValidator } from "../utils/common.js";
+import { FORMS } from "../utils/forms.js";
 
-      const signupForm=[
-        {
-           name:"email",
-           id:"email",
-           type:"email",
-           placeholder:"Email",
-           required:true,
-           validations:[
-            {
-              type:"regex",
-              regex:"/^[\w-]+(\.[\w-]+)*@[A-Za-z0-9]+(\.[A-Za-z0-9]+)*(\.[A-Za-z]{2,})$/",
-              errorMessage:"Please enter valid Email id"
-          },{
-            type:"required",
-            errorMessage:"This is required field."
-          }
-          ],
-        },
-        {
-          name:"username",
-          id:"username",
-          type:"input",
-          validations:[
-            {
-              type:"regex",
-              regex:"^[A-Za-z]+(?:[ -][A-Za-z]+)*$",
-              errorMessage:"Please enter username with letter  and number"
-          },{
-            type:"required",
-            errorMessage:"This is required field."
-          }
-          ],
-          placeholder:"username",
-          required:true,
-       },
-       {
-        name:"displayname",
-        id:"displayname",
-        type:"input",
-        regex:"^[A-Za-z]+(?:[ -][A-Za-z]+)*$",
-        validations:[
-          {
-            type:"regex",
-            regex:"^[A-Za-z]+(?:[ -][A-Za-z]+)*$",
-            errorMessage:"Please enter valid display name it should be in letters"
-        },{
-          type:"required",
-          errorMessage:"This is required field."
-        }
-        ],
-        placeholder:"displayname",
-          required:true,
-       },
-       {
-        name:"language",
-        id:"language",
-        type:"select",
-        options:[
-          {title:"select language",value:""},
-          {title:"English",value:"en"},
-        ],
-        validation:[
-          {
-            type:"validLanguage",
-            check:"options",
-            errorMessage:"Select valid language"
-          }
-        ],
-        placeholder:"language",
-          required:true,
-       },
-       {
-         name:"photo",
-         id:"photo",
-         type:"file",
-         required:true,
-         validations:[
-          {
-          type:"required",
-          errorMessage:"This is required field."
-        },
-        {
-          type:"uploadType",
-          allowedTypes:["jpeg","png","gif","webp"],
-          errorMessage:"Please upload jpeg,png,gif and webp only."
-        }
-        ],
-       },
-       {
-         name:"password",
-         id:"password",
-         type:"password",
-         placeholder:"Password",
-         required:true,
-         validations:[
-          {
-            type:"regex",
-            regex:"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$",
-            errorMessage:"Please enter valid password value."
-        },{
-          type:"required",
-          errorMessage:"This is required field."
-        }
-        ],
-       },
-       {
-        name:"confirm-password",
-        id:"confirm-password",
-        type:"password",
-        placeholder:"Match Password",
-        validations:[
-        {
-          type:"required",
-          errorMessage:"This is required field."
-        },{
-          type:"matchField",
-          field:"password",
-          errorMessage:"Password does not match."
-        }
-        ],
-      }
-      ]
-     
-      res.status(200).json(signupForm)
+
+export const getSignup = async (req, res, next) => {
+    try {
+      res.status(200).json({form:FORMS.signUpForm})
     } catch (error) {
       next(error);
     }
   };
 
   export const signup = async (req, res, next) => {
- 
+     let {password,username,email} = req.body;
     try {
-      const { error } = validation.signupSchema(req.body);
+     const isValid = formValidator("signUpForm",req.body);
+     if (!isValid.success) {
+      return res
+        .status(STATUS_CODE.bad_request)
+        .json({ success: false, message: isValid.message });
+    }
+    const userExist = await userFindQuery({username,email});
+    if(userExist.success){
+         return res.status(STATUS_CODE.bad_request).json({success:false,message:"User already exist with this username/email"})
+    }
+      password = await hashPassword(password);
+      const response = await createUserQuery({...req.body,password:password});
+     if(!response.success)
+          return res.status(STATUS_CODE.server_error).json({success:false,message:response.message});
+     res.status(STATUS_CODE.success).json({success:true,data:response.data})
 
-      // db.query("",)
-      if (error) {
-        return res
-          .status(STATUS_CODE.bad_request)
-          .json({ success: false, message: error.message });
-      }
-     
+       res.status(STATUS_CODE.success).json({...isValid})
     } catch (error) {
       next(error);
     }
   };
 
   export const getLogin = async (req, res, next) => {
- 
     try {
-
-     res.status(200).json({message:"logged In"})
+     res.status(200).json({message:"logged In", form:loginForm})
     } catch (error) {
       next(error);
     }
   };
 
   export const login = async (req, res, next) => {
- 
+    const {password,name}  = req.body;
     try {
-      const { error } = validation.loginSchema({ story });
-      if (error) {
+      const isValid = formValidator("loginForm",req.body);
+      if (!isValid.success) {
         return res
           .status(STATUS_CODE.bad_request)
-          .json({ success: false, message: error.message });
+          .json({ success: false, message: isValid.message });
       }
-     
+      const response = await userFindQuery({username:name,email:name});
+      if(!response?.data)
+             return res.status(STATUS_CODE.server_error).json({success:false,message:"User not exist"});
+
+      const isMatched = await comparePasswords({password,hashedPassword:response.data.password});
+      if(!isMatched)
+            return res.status(STATUS_CODE.bad_request).json({success:false,message:"Incorrect Password"});
+
+      return res.status(STATUS_CODE.success).json({
+        success:true,
+        data:response.data
+      })
     } catch (error) {
       next(error);
     }
